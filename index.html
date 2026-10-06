@@ -1,6 +1,263 @@
 <!DOCTYPE html>
 <html lang="zh-HK">
 <head>
+<style id="lumi-runtime">
+@import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:ital,wght@0,300..700;1,300..700&family=Google+Sans+Code:ital,wght,MONO@0,300..700,0..1;1,300..700,0..1&display=swap');
+:root {
+  --body-bg: transparent;
+  --ff-sans: 'Google Sans Flex', 'Google Sans', sans-serif;
+  --ff-mono: 'Google Sans Code', monospace;
+  --surface: #fdfcfc; --surface-dim: #f2f0f0; --surface-bright: #ffffff;
+  --surface-container: #f2f0f0;
+  --on-surface: #000000; --on-surface-variant: rgba(0, 0, 0, 0.55);
+  --primary: #3186ff; --accent-container: #dcf1ff;
+  --positive: #008052; --positive-container: #daf9d4;
+  --error: #de2d29; --error-container: #ffdeec;
+  --outline: #727676; --stroke-default: #e3e3e3;
+  --r-s: 8px; --r-m: 12px; --r-full: 999px;
+  --spacing-xs: 4px; --spacing-s: 8px; --spacing-m: 12px; --spacing-l: 16px;
+}
+:root[data-theme="dark"], body.dark-mode {
+  --body-bg: #0f0f0f;
+  --surface: #0f0f0f; --surface-dim: #141414; --surface-bright: #1c1c1c;
+  --surface-container: #141414;
+  --on-surface: #e0e0e0; --on-surface-variant: rgba(255, 255, 255, 0.55);
+  --primary: #9dd2ff; --accent-container: #192967;
+  --positive: #0ebc5f; --positive-container: #002220;
+  --error: #ff4c45; --error-container: #3c0202;
+  --outline: #9a9b9c; --stroke-default: #2d2f38;
+}
+html, body { background: var(--body-bg) !important; color: var(--on-surface) !important; margin: 0; padding: 0; font-family: var(--ff-sans); }
+.widget-container { display: flex; flex-direction: column; gap: var(--spacing-m); padding: var(--spacing-m); box-sizing: border-box; width: 100%; min-height: 280px; }
+.header-title { margin: 0; font-size: 24px; font-weight: 500; }
+.header-subtitle { margin: 0; font-size: 14px; color: var(--on-surface-variant); }
+.diagram-viewport { position: relative; width: 100%; background: var(--surface-dim); border-radius: var(--r-m); padding: var(--spacing-s); overflow-x: auto; }
+.diagram-svg { width: 100%; min-width: 900px; height: auto; display: block; margin: 0 auto; user-select: none; }
+.tree-node { cursor: pointer; transition: opacity 0.2s ease; }
+.tree-node:hover polygon, .tree-node:hover rect { stroke-width: 2px; filter: brightness(1.05); }
+.tree-node.is-active polygon, .tree-node.is-active rect { stroke: var(--primary) !important; stroke-width: 2.5px !important; }
+text { stroke: none !important; paint-order: fill; font-family: var(--ff-sans); fill: var(--on-surface); }
+.detail-card { background: var(--surface-bright); border: 1px solid var(--stroke-default); border-radius: var(--r-m); padding: var(--spacing-m); display: flex; flex-direction: column; gap: var(--spacing-xs); }
+.detail-header { display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-s); }
+.detail-title { font-size: 18px; font-weight: bold; margin: 0; }
+.detail-badge { padding: 4px 12px; border-radius: var(--r-full); font-size: 12px; font-weight: 600; }
+.badge-eligible { background: var(--positive-container); color: var(--positive); }
+.badge-naturalization { background: var(--error-container); color: var(--error); }
+.badge-decision { background: var(--accent-container); color: var(--primary); }
+.detail-body { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; font-size: 15px; }
+.legal-basis { font-family: var(--ff-mono); color: var(--on-surface-variant); background: var(--surface-dim); padding: 8px 12px; border-radius: var(--r-s); font-size: 13px; }
+.player-example { display: flex; align-items: flex-start; gap: 8px; color: var(--primary); font-weight: 500; font-size: 14px; background: var(--accent-container); padding: 10px; border-radius: var(--r-s); }
+.info-section { display: flex; flex-direction: column; gap: 16px; margin-top: 16px; }
+.info-card { background: var(--surface-container); border-radius: var(--r-m); padding: 20px; }
+.info-card h3 { margin: 0 0 12px 0; font-size: 18px; color: var(--on-surface); border-bottom: 2px solid var(--stroke-default); padding-bottom: 8px; }
+.info-card p, .info-card ul { margin: 0 0 12px 0; font-size: 15px; line-height: 1.6; color: var(--on-surface); }
+.info-card ul { padding-left: 20px; }
+.info-card li { margin-bottom: 6px; }
+</style>
+</head>
+<body>
+  <div class="widget-container">
+    <div class="header-block">
+      <h2 class="header-title">🇭🇰 香港特區護照資格判定邏輯樹</h2>
+      <p class="header-subtitle">點擊邏輯節點與判定結果，查看國籍法條文及代表球員案例。</p>
+    </div>
+
+    <!-- Diagram Viewport -->
+    <div class="diagram-viewport">
+      <svg class="diagram-svg" viewBox="0 0 950 480">
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="7.5" refY="5" markerUnits="userSpaceOnUse" markerWidth="10" markerHeight="10" orient="auto">
+            <path d="M 2 2 L 8 5 L 2 8" fill="none" stroke="var(--on-surface-variant)" stroke-width="1.5" stroke-linecap="round"/>
+          </marker>
+        </defs>
+
+        <!-- Path Connectors -->
+        <path d="M 280 50 H 210 V 125" fill="none" stroke="var(--on-surface-variant)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#arrow)" />
+        <rect x="225" y="40" width="30" height="20" rx="10" fill="var(--surface-bright)"/>
+        <text x="240" y="54" font-size="12" text-anchor="middle">無</text>
+
+        <path d="M 560 50 H 630 V 125" fill="none" stroke="var(--on-surface-variant)" stroke-width="1.5" marker-end="url(#arrow)" />
+        <rect x="580" y="40" width="30" height="20" rx="10" fill="var(--surface-bright)"/>
+        <text x="595" y="54" font-size="12" text-anchor="middle">有</text>
+
+        <path d="M 110 150 H 100 V 235" fill="none" stroke="var(--on-surface-variant)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#arrow)" />
+        <rect x="90" y="140" width="30" height="20" rx="10" fill="var(--surface-bright)"/>
+        <text x="105" y="154" font-size="12" text-anchor="middle">否</text>
+
+        <path d="M 310 150 H 320 V 235" fill="none" stroke="var(--on-surface-variant)" stroke-width="1.5" marker-end="url(#arrow)" />
+        <rect x="300" y="140" width="30" height="20" rx="10" fill="var(--surface-bright)"/>
+        <text x="315" y="154" font-size="12" text-anchor="middle">是</text>
+
+        <path d="M 530 150 H 520 V 235" fill="none" stroke="var(--on-surface-variant)" stroke-width="1.5" marker-end="url(#arrow)" />
+        <rect x="510" y="140" width="30" height="20" rx="10" fill="var(--surface-bright)"/>
+        <text x="525" y="154" font-size="12" text-anchor="middle">是</text>
+
+        <path d="M 730 150 H 740 V 235" fill="none" stroke="var(--on-surface-variant)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#arrow)" />
+        <rect x="720" y="140" width="30" height="20" rx="10" fill="var(--surface-bright)"/>
+        <text x="735" y="154" font-size="12" text-anchor="middle">否</text>
+
+        <path d="M 640 260 H 630 V 355" fill="none" stroke="var(--on-surface-variant)" stroke-width="1.5" marker-end="url(#arrow)" />
+        <rect x="620" y="250" width="30" height="20" rx="10" fill="var(--surface-bright)"/>
+        <text x="635" y="264" font-size="12" text-anchor="middle">是</text>
+
+        <path d="M 840 260 H 850 V 355" fill="none" stroke="var(--on-surface-variant)" stroke-width="1.5" stroke-dasharray="4 4" marker-end="url(#arrow)" />
+        <rect x="830" y="250" width="30" height="20" rx="10" fill="var(--surface-bright)"/>
+        <text x="845" y="264" font-size="12" text-anchor="middle">否</text>
+
+
+        <!-- Nodes -->
+        <g class="tree-node" id="node-n1" onclick="selectNode('n1')" onmouseover="hoverNode('n1')" transform="translate(420, 50)">
+          <polygon points="0,-48 140,0 0,48 -140,0" fill="var(--surface-container)" stroke="var(--outline)" stroke-width="1.3"/>
+          <text y="-14" font-size="13" font-weight="bold" text-anchor="middle">1. 具華裔血統？或</text>
+          <text y="4" font-size="13" font-weight="bold" text-anchor="middle">出生時父母已是</text>
+          <text y="22" font-size="13" font-weight="bold" text-anchor="middle">特區護照持有人？</text>
+        </g>
+
+        <g class="tree-node" id="node-n1_5" onclick="selectNode('n1_5')" onmouseover="hoverNode('n1_5')" transform="translate(210, 150)">
+          <polygon points="0,-35 100,0 0,35 -100,0" fill="var(--surface-container)" stroke="var(--outline)" stroke-width="1.3"/>
+          <text y="-5" font-size="14" font-weight="bold" text-anchor="middle">1.5. 申請人是否在</text>
+          <text y="15" font-size="14" font-weight="bold" text-anchor="middle">香港特區出生？</text>
+        </g>
+
+        <g class="tree-node" id="node-n2" onclick="selectNode('n2')" onmouseover="hoverNode('n2')" transform="translate(630, 150)">
+          <polygon points="0,-35 100,0 0,35 -100,0" fill="var(--surface-container)" stroke="var(--outline)" stroke-width="1.3"/>
+          <text y="-5" font-size="14" font-weight="bold" text-anchor="middle">2. 申請人是否在</text>
+          <text y="15" font-size="14" font-weight="bold" text-anchor="middle">香港特區出生？</text>
+        </g>
+
+        <g class="tree-node" id="node-n3" onclick="selectNode('n3')" onmouseover="hoverNode('n3')" transform="translate(740, 260)">
+          <polygon points="0,-40 100,0 0,40 -100,0" fill="var(--surface-container)" stroke="var(--outline)" stroke-width="1.3"/>
+          <text y="-10" font-size="13" font-weight="bold" text-anchor="middle">3. 出生時具香港身份的</text>
+          <text y="5" font-size="13" font-weight="bold" text-anchor="middle">家長已在外國定居、</text>
+          <text y="20" font-size="13" font-weight="bold" text-anchor="middle">且BB即獲外國籍？</text>
+        </g>
+
+        <!-- Outcomes -->
+        <g class="tree-node" id="node-outA2" onclick="selectNode('outA2')" onmouseover="hoverNode('outA2')" transform="translate(100, 275)">
+          <rect x="-80" y="-38" width="160" height="76" rx="14" fill="var(--error-container)" stroke="var(--error)" stroke-width="1.3"/>
+          <text y="-12" font-size="14" font-weight="bold" text-anchor="middle">A2. 須 7 年歸化程序</text>
+          <text y="8" font-size="12" fill="var(--error)" text-anchor="middle">(成年純外援途徑)</text>
+          <text y="24" font-size="12" fill="var(--on-surface-variant)" text-anchor="middle">例: 艾華頓</text>
+        </g>
+
+        <g class="tree-node" id="node-outA1" onclick="selectNode('outA1')" onmouseover="hoverNode('outA1')" transform="translate(320, 275)">
+          <rect x="-80" y="-38" width="160" height="76" rx="14" fill="var(--error-container)" stroke="var(--error)" stroke-width="1.3"/>
+          <text y="-12" font-size="14" font-weight="bold" text-anchor="middle">A1. 須 7 年歸化程序</text>
+          <text y="8" font-size="12" fill="var(--error)" text-anchor="middle">(香港出生外籍途徑)</text>
+          <text y="24" font-size="12" fill="var(--on-surface-variant)" text-anchor="middle">例: 米高</text>
+        </g>
+
+        <g class="tree-node" id="node-outB" onclick="selectNode('outB')" onmouseover="hoverNode('outB')" transform="translate(520, 275)">
+          <rect x="-80" y="-45" width="160" height="90" rx="14" fill="var(--positive-container)" stroke="var(--positive)" stroke-width="1.3"/>
+          <text y="-20" font-size="14" font-weight="bold" text-anchor="middle">B. 天生擁有護照權利</text>
+          <text y="0" font-size="12" fill="var(--positive)" text-anchor="middle">(法定天然資格)</text>
+          <text y="16" font-size="12" fill="var(--on-surface-variant)" text-anchor="middle">例: 安永佳</text>
+          <text y="32" font-size="12" fill="var(--on-surface-variant)" text-anchor="middle">或 歸化後在港出生子女</text>
+        </g>
+
+        <g class="tree-node" id="node-outC" onclick="selectNode('outC')" onmouseover="hoverNode('outC')" transform="translate(630, 395)">
+          <rect x="-80" y="-38" width="160" height="76" rx="14" fill="var(--error-container)" stroke="var(--error)" stroke-width="1.3"/>
+          <text y="-12" font-size="14" font-weight="bold" text-anchor="middle">C. 喪失國籍, 須歸化</text>
+          <text y="8" font-size="12" fill="var(--error)" text-anchor="middle">(海外定居斷親)</text>
+          <text y="24" font-size="12" fill="var(--on-surface-variant)" text-anchor="middle">例: 謝家強</text>
+        </g>
+
+        <g class="tree-node" id="node-outD" onclick="selectNode('outD')" onmouseover="hoverNode('outD')" transform="translate(850, 395)">
+          <rect x="-80" y="-45" width="160" height="90" rx="14" fill="var(--positive-container)" stroke="var(--positive)" stroke-width="1.3"/>
+          <text y="-20" font-size="14" font-weight="bold" text-anchor="middle">D. 成功繼承, 天生擁有</text>
+          <text y="0" font-size="12" fill="var(--positive)" text-anchor="middle">(家長未定居海外)</text>
+          <text y="16" font-size="12" fill="var(--on-surface-variant)" text-anchor="middle">例: 趙聡悟</text>
+          <text y="32" font-size="12" fill="var(--on-surface-variant)" text-anchor="middle">或 歸化後海外出生子女</text>
+        </g>
+      </svg>
+    </div>
+
+    <!-- Inspector Card -->
+    <div class="detail-card" id="detailCard">
+      <div class="detail-header">
+        <h3 class="detail-title" id="detailTitle">點擊上方節點檢視詳情</h3>
+        <span class="detail-badge badge-decision" id="detailBadge">邏輯節點</span>
+      </div>
+      <div class="detail-body">
+        <div id="detailDesc">選擇流程圖中的任何決議或最終判定結果，可查閱國籍法相關條款與實際球員歸化案例。</div>
+        <div class="legal-basis" id="detailLegal">法律依據: 《中華人民共和國國籍法》及全國人大常委會「1996年解釋」</div>
+        <div class="player-example" id="detailExample" style="display: none;">
+          <span>⚽ 代表案例：<span id="exampleText">--</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Info Sections -->
+    <div class="info-section">
+      <div class="info-card">
+        <h3>📝 第一關先天鎖匙：華裔血統與「歸化二代」</h3>
+        <p>要在法律上直接確認為「中國公民」並具備特區護照權利，必須滿足以下<strong>其中一個</strong>條件：</p>
+        <ul>
+          <li><strong>鎖匙 A（華人血統）：</strong>申請人擁有中國血統（無代數限制）。但入境處絕不接納商業 DNA 測試，必須提供一條完全不斷裂的官方出生紙鏈條，且祖輩海外文件必須明確註記「Chinese / Sino」等種族字眼。</li>
+          <li><strong>鎖匙 B（歸化二代）：</strong>即使申請人完全無華裔血統，但只要其出生時，父母其中一方<strong>已經</strong>透過 7 年歸化宣誓成為中國公民（持有特區護照），則該申請人依法自動繼承中國籍。無論在香港或海外（家長未定居當地）出生，皆天生擁有特區護照。</li>
+        </ul>
+      </div>
+
+      <div class="info-card">
+        <h3>⏳ 橙色通道：7 年歸化入籍流程</h3>
+        <p>無法滿足第一關條件的外籍人士（或已觸發第五條剝奪機制的海外華裔），必須經歷以下程序：</p>
+        <ul>
+          <li><strong>Step 1：連續居港 7 年。</strong>依賴合法簽證連續且通常居於香港不少於 7 年。</li>
+          <li><strong>Step 2：核實永久性居民身份。</strong>向入境處申請核實資格，取得三粒星身份證。</li>
+          <li><strong>Step 3：申請加入中國國籍。</strong>正式入紙申請成為中國公民。</li>
+          <li><strong>Step 4：正式放棄原國籍。</strong>因不承認雙重國籍，必須向原籍國辦理退籍手續，交出「退籍證明書」。</li>
+          <li><strong>Step 5：申領特區護照。</strong>憑中國籍證明書正式辦理護照，獲取代表港隊資格。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const NODE_DATA = {
+      n1: { title: "1. 華裔血統 / 父母已歸化判定", badge: "門檻問題", badgeClass: "badge-decision", desc: "判斷申請人是否具有中國血統，或者出生時父母其中一方是否已經依法歸化成為中國公民（持有特區護照）。兩者中其一即滿足先天自動取得國籍的先決條件。", legal: "依據：《國籍法》第2, 4, 5條及1996人大常委會《解釋》", example: null },
+      n1_5: { title: "1.5. 香港出生判定（純外籍路線）", badge: "出生地原則", badgeClass: "badge-decision", desc: "對於無華人血統且父母皆非中國公民的純外籍人士，即便在香港出生，依法也不能自動取得中國國籍，必須走歸化路線。", legal: "依據：《基本法》第24條第2款第4項", example: null },
+      n2: { title: "2. 香港出生判定（華裔/歸化二代路線）", badge: "出生地原則", badgeClass: "badge-decision", desc: "凡具華裔血統或為中國公民後代，且在香港出生者，即屬於具有中國國籍的香港永久性居民，直接具備申請特區護照資格。", legal: "依據：《基本法》第24條第2款第1項", example: null },
+      n3: { title: "3. 海外出生與家長定居條件", badge: "國籍衝突排除", badgeClass: "badge-decision", desc: "檢視海外出生時，具香港身份/中國國籍的父母是否已取得外國永居（定居）。若已定居且申請人出生即獲外籍，則依法不具中國國籍。", legal: "依據：《國籍法》第5條（排除雙重國籍條款）", example: null },
+      
+      outA2: { title: "判定結果 A2：成年外援須 7 年歸化", badge: "歸化入籍", badgeClass: "badge-naturalization", desc: "成年後才來港效力的純外籍球員。必須依靠工作簽證連續居港 7 年、取得永居、加入中國籍並正式放棄原有護照。", legal: "依據：《國籍法》第7條及《基本法》第24條第2款第4項", example: "艾華頓 (Everton Camargo) — 巴西裔外援，在港住滿7年後放棄巴西籍歸化。" },
+      outA1: { title: "判定結果 A1：香港出生外籍須 7 年歸化", badge: "歸化入籍", badgeClass: "badge-naturalization", desc: "雖然在香港出生及成長，但因出生時父母均為外籍，出生時並非中國公民。即使天生擁有居留權，仍須補辦歸化手續並放棄原國籍。", legal: "依據：《國籍法》第7條及《基本法》第24條第2款第4項", example: "米高 (Michael Udebuluzor) — 尼日利亞裔但在港出生，成年後放棄尼籍歸化。" },
+      outB: { title: "判定結果 B：天生擁有特區護照權利", badge: "天然資格", badgeClass: "badge-eligible", desc: "具有華裔血統，或父母已是中國公民，且在香港出生，依法自動擁有中國國籍與特區護照權利。", legal: "依據：《基本法》第24條第2款第1項", example: "安永佳；或 已歸化球員入籍後在港出生的子女。" },
+      outC: { title: "判定結果 C：喪失中國國籍，須重新歸化", badge: "喪失繼承資格", badgeClass: "badge-naturalization", desc: "具華裔血統但海外出生，且出生時中方父母已在外國「定居」（持綠卡/永居），觸發剝奪機制喪失中國國籍。回港後必須同外籍人士一樣重新歸化。", legal: "依據：《國籍法》第5條但書規定", example: "謝家強 (Sean Tse) — 海外出生，因家長當時已定居海外而未能繼承國籍。" },
+      outD: { title: "判定結果 D：成功繼承國籍，天生擁有", badge: "血統繼承成功", badgeClass: "badge-eligible", desc: "海外出生，但出生時具香港身份的家長未在當地「定居」（僅持工作/短期簽證），成功跨代繼承中國國籍，天生擁有申領護照權利。", legal: "依據：《國籍法》第5條前段", example: "趙聡悟 (Sohgo) — 海外出生，因出生時家長未定居當地順利繼承。已歸化球員入籍後在海外出生的子女亦屬此例。" }
+    };
+
+    let activeNodeId = 'node-n1';
+    function selectNode(id) { activeNodeId = id; updateUI(); }
+    function hoverNode(id) { if (activeNodeId !== id) { renderDetail(id); } }
+    
+    function renderDetail(id) {
+      const data = NODE_DATA[id];
+      if (!data) return;
+      document.getElementById('detailTitle').textContent = data.title;
+      const badgeEl = document.getElementById('detailBadge');
+      badgeEl.textContent = data.badge;
+      badgeEl.className = `detail-badge ${data.badgeClass}`;
+      document.getElementById('detailDesc').textContent = data.desc;
+      document.getElementById('detailLegal').textContent = data.legal;
+      const exampleEl = document.getElementById('detailExample');
+      if (data.example) { exampleEl.style.display = 'flex'; document.getElementById('exampleText').textContent = data.example; } 
+      else { exampleEl.style.display = 'none'; }
+    }
+
+    function updateUI() {
+      document.querySelectorAll('.tree-node').forEach(el => el.classList.remove('is-active'));
+      const activeEl = document.getElementById(`node-${activeNodeId}`);
+      if (activeEl) activeEl.classList.add('is-active');
+      renderDetail(activeNodeId);
+    }
+
+    document.querySelector('.diagram-svg').addEventListener('mouseleave', () => renderDetail(activeNodeId));
+    selectNode('n1');
+  </script>
+</body>
+</html><!DOCTYPE html>
+<html lang="zh-HK">
+<head>
 <!-- (保留原有 lumi-runtime CSS，此處簡化顯示以節省空間，但完整套用你的樣式) -->
 <style id="lumi-runtime">
 @import url('https://fonts.googleapis.com/css2?family=Google+Sans+Flex:ital,wght@0,300..700;1,300..700&family=Google+Sans+Code:ital,wght,MONO@0,300..700,0..1;1,300..700,0..1&display=swap');
